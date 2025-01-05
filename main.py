@@ -26,9 +26,6 @@ app.add_middleware(
 
 @app.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy(request: Request):
-    logger.info("work")
-    logger.info(origins)
-
     target_url = request.query_params.get("url")
     if not target_url:
         return {"error": "Parameter 'url' is required"}, 400
