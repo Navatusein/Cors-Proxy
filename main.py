@@ -1,6 +1,7 @@
 import logging
 import httpx
 import uvicorn
+import socket
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -24,7 +25,28 @@ app.add_middleware(
 )
 
 
-@app.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/work", methods=["GET"])
+async def work():
+    return JSONResponse(content="I am alive!", status_code=200)
+
+
+@app.api_route("/tcp", methods=["POST"])
+async def tcp(request: Request):
+    try:
+        target_address = request.query_params.get("address")
+        target_port = int(request.query_params.get("port"))
+
+        content = await request.body()
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+            client.connect((target_address, target_port))
+            client.sendall(content)
+            response = client.recv(1024).decode()
+            return JSONResponse(content=response, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.api_route("/proxy", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy(request: Request):
     target_url = request.query_params.get("url")
     if not target_url:
