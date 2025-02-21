@@ -4,7 +4,7 @@ import uvicorn
 import socket
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from config import Settings
@@ -46,6 +46,7 @@ async def tcp(request: Request):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+
 @app.api_route("/proxy", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy(request: Request):
     target_url = request.query_params.get("url")
@@ -62,17 +63,15 @@ async def proxy(request: Request):
             )
 
             expose_headers = list(response.headers.keys())
+            response_status_code = 200 if 300 <= response.status_code < 400 else response.status_code
+            response_headers = {**dict(response.headers),"Access-Control-Expose-Headers": ", ".join(expose_headers)}
 
-            return JSONResponse(
-                content=response.json() if "application/json" in response.headers.get("content-type", "") else response.text,
-                status_code=200 if 300 <= response.status_code < 400 else response.status_code,
-                headers={
-                    **dict(response.headers),
-                    "Access-Control-Expose-Headers": ", ".join(expose_headers),
-                },
-            )
+            if "application/json" in response.headers.get("content-type", ""):
+                return JSONResponse(content=response.json(), status_code=response_status_code, headers=response_headers)
+
+            return PlainTextResponse(content=response.text, status_code=response_status_code, headers=response_headers)
         except Exception as e:
-            return JSONResponse(content= {"error": str(e)}, status_code=500)
+            return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 if __name__ == '__main__':
